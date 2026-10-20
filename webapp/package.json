@@ -1,0 +1,14 @@
+{
+  "name": "personal-finance-ai-agent-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
+    "@simplewebauthn/server": "^13.3.3",
+    "pdf-lib": "1.17.1"
+  }
+}

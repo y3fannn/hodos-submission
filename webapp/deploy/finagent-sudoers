@@ -1,0 +1,2 @@
+# Installed at /etc/sudoers.d/finagent, mode 440. One command, nothing else.
+finagent ALL=(root) NOPASSWD: /usr/bin/systemctl restart finagent

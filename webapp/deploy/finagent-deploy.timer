@@ -1,0 +1,13 @@
+# Off by default. Deploys are run by hand: ssh in and run deploy.sh, which takes a few seconds.
+# A timer only earns its keep once the VM is left on and someone other than Duan is shipping.
+# Turn it on with: sudo systemctl enable --now finagent-deploy.timer
+[Unit]
+Description=Check for a new deploy-* tag
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1h
+AccuracySec=5min
+
+[Install]
+WantedBy=timers.target

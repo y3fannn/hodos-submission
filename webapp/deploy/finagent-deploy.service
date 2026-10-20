@@ -1,0 +1,9 @@
+[Unit]
+Description=Pull the newest deploy-* tag and restart the app
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=finagent
+Group=finagent
+ExecStart=/opt/finagent/app/webapp/deploy/deploy.sh

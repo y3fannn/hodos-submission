@@ -1,0 +1,37 @@
+# The app, as a service. Installed at /etc/systemd/system/finagent.service.
+# design/2026-09-20-vm.md step 7. The app can write to one folder and nothing else.
+[Unit]
+Description=Personal Finance AI Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=finagent
+Group=finagent
+WorkingDirectory=/opt/finagent/app/webapp
+ExecStart=/usr/bin/node server.js
+EnvironmentFile=/etc/finagent/env
+Restart=always
+RestartSec=3
+MemoryMax=400M
+
+# Least privilege: it cannot gain rights, cannot see homes, and the whole disk is read-only to it
+# except its own accounts folder.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6
+ReadWritePaths=/var/lib/finagent
+
+[Install]
+WantedBy=multi-user.target

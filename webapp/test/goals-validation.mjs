@@ -1,0 +1,38 @@
+// Goal validation: disposable in-memory profile, no browser, provider or real records.
+import assert from 'node:assert/strict';
+Object.defineProperty(globalThis, 'navigator', { value: { storage: null }, configurable: true });
+globalThis.location = { hash: '#/goals' }; globalThis.window = { scrollTo() {} };
+globalThis.document = { getElementById: () => ({ innerHTML: '' }), querySelector: () => null, querySelectorAll: () => [], body: {} };
+globalThis.fetch = async () => { throw new Error('Network forbidden'); };
+const P = new URL('../public/js/', import.meta.url).href, M = p => import(P + p);
+const { money } = await M('lib/money.js'), { store } = await M('lib/store.js');
+const G = await M('features/goals.js'), A = await M('features/accounts.js'), PFL = await M('features/profile.js');
+PFL.createProfile({base_currency:'SGD',timezone:'UTC',self_description:'working',ai_provider:false});
+const today=PFL.today(), tomorrow=new Date(`${today}T00:00:00Z`); tomorrow.setUTCDate(tomorrow.getUTCDate()+1);
+const prior = d => { const x=new Date(`${d}T00:00:00Z`); x.setUTCDate(x.getUTCDate()-1); return x.toISOString().slice(0,10); };
+const date=tomorrow.toISOString().slice(0,10), account=A.create({name:'Bank',type:'bank',currency:'SGD',openingBalance:money(1000,'SGD'),openedOn:prior(today)}), foreign=A.create({name:'Foreign',type:'bank',currency:'USD',openingBalance:money(100,'USD')});
+const before=()=>JSON.stringify(store.snapshot());
+let snapshot=before(); assert.throws(()=>G.create({name:' ',target:money(0,'SGD'),targetDate:'2026-02-30',accountId:'missing'}),e=>!!e.fields.name&&!!e.fields.target&&!!e.fields.date&&!!e.fields.account); assert.equal(before(),snapshot);
+assert.throws(()=>G.create({name:'Missing rate',target:money(100,'SGD'),targetDate:date,accountId:foreign.id}),e=>!!e.rate_pair&&e.rate_pair.from==='USD');
+const goal=G.create({name:'Save',target:money(10000,'SGD'),targetDate:date,accountId:account.id}); assert.equal(goal.start_balance.amount,1000);
+const addTx=(kind,amount,d)=>store.insert('transactions',{kind,account_id:account.id,counter_account_id:null,counter_money:null,money:money(amount,'SGD'),date:d,voided_at:null,void_reason:null});
+const income=addTx('income',10000,today);
+let readSnapshot=before(); assert.equal(G.status(goal).achieved,true); G.history(goal); assert.equal(before(),readSnapshot,'status/history do not write goal or financial rows');
+assert.equal(store.get('goals',goal.id).status,'active'); assert.equal(G.status(goal).progress.amount,10000);
+const expense=addTx('expense',2002,prior(today)); assert.notEqual(store.get('transactions',income.id).created_at?.slice(0,10),store.get('transactions',expense.id).date);
+assert.equal(G.status(goal).achieved,false);
+store.update('transactions',expense.id,{voided_at:'2026-01-01T00:00:00.000Z'}); assert.equal(G.status(goal).achieved,true);
+store.update('transactions',expense.id,{voided_at:null}); assert.equal(G.status(goal).achieved,false);
+store.update('transactions',expense.id,{voided_at:'2026-01-01T00:00:00.000Z'}); addTx('income',1,today); assert.equal(G.status(goal).achieved,true);
+const legacy=store.insert('goals',{name:'Legacy achieved',target:money(1,'SGD'),target_date:date,account_id:account.id,start_balance:money(1000,'SGD'),started_on:today,status:'completed',completed_at:'2026-01-01T00:00:00.000Z'});
+assert.equal(G.list('active').some(g=>g.id===legacy.id),true); assert.equal(G.status(legacy).achieved,true); assert.equal(store.get('goals',legacy.id).status,'completed');
+const unavailable=store.insert('goals',{name:'Unavailable',target:money(1,'SGD'),target_date:date,account_id:foreign.id,start_balance:money(0,'SGD'),started_on:today,status:'active'});
+assert.equal(G.status(unavailable).achieved,null);
+const manual=G.create({name:'Manual',target:money(100,'SGD'),targetDate:date});
+for(const [amount,day] of [[money(1,'SGD'),undefined],[money(Number.MAX_SAFE_INTEGER+1,'SGD'),today], [money(1,'SGD'),'2026-02-30'],[money(1,'SGD'),date]]) { snapshot=before(); assert.throws(()=>G.contribute(manual.id,amount,day),e=>Object.keys(e.fields).length>0); assert.equal(before(),snapshot); }
+assert.throws(()=>G.contribute('missing',money(1,'SGD'),today),e=>!!e.fields.amount);
+G.contribute(manual.id,money(-100,'SGD'),today); G.contribute(manual.id,money(0,'SGD'),today);
+assert.equal(G.contributions(manual.id).length,2); assert.equal(G.status(manual).achieved,false);
+G.contribute(manual.id,money(200,'SGD'),today); assert.equal(G.status(manual).achieved,true);
+G.contribute(manual.id,money(-1,'SGD'),today); assert.equal(G.status(manual).achieved,false);
+console.log('PASS goals validation, preflight no-write failures, future targets, linked start balance, signed and zero contributions');

@@ -1,0 +1,27 @@
+// Category validation uses the disposable store; no browser, provider or real records.
+import assert from 'node:assert/strict';
+Object.defineProperty(globalThis, 'navigator', { value: { storage: null }, configurable: true });
+globalThis.location = { hash: '#/categories' }; globalThis.window = { scrollTo() {} };
+globalThis.document = { getElementById: () => ({ innerHTML: '' }), querySelector: () => null, querySelectorAll: () => [], body: {} };
+globalThis.fetch = async () => { throw new Error('No network in category validation'); };
+const P = new URL('../public/js/', import.meta.url).href, M = p => import(P + p);
+const {store} = await M('lib/store.js'), PFL = await M('features/profile.js'), C = await M('features/categories.js');
+PFL.createProfile({base_currency:'SGD',timezone:'UTC',self_description:'working',ai_provider:false});
+const fails=[]; const check=(ok,label)=>{console.log(`${ok?'PASS':'FAIL'} ${label}`);if(!ok)fails.push(label);};
+const expense=C.create('Food','expense'), income=C.create('Salary','income'), sub=C.create('Coffee','expense',expense.id);
+const reject=(fn,label)=>{const before=store.snapshot();let error;try{fn();}catch(e){error=e;}check(!!error&&JSON.stringify(store.snapshot())===JSON.stringify(before),label);store.open(before,null,'categories-validation-test');};
+reject(()=>C.create(' ','unsupported','missing-parent'),'compound invalid name/kind/parent writes nothing');
+reject(()=>C.create('Nested','expense',sub.id),'cannot create below a subcategory');
+reject(()=>C.create('Mismatch','income',expense.id),'domain refuses parent kind mismatch');
+reject(()=>C.rename('missing','Updated'),'missing rename source reports validation error');
+const tx=store.insert('transactions',{category_id:sub.id,kind:'expense'});
+const rule=store.insert('merchant_rules',{merchant_key:'coffee',category_id:sub.id,hits:1});
+reject(()=>C.merge(sub.id,sub.id),'same-id merge leaves store unchanged');
+reject(()=>C.merge(expense.id,income.id),'different-kind merge leaves store unchanged');
+reject(()=>C.merge(expense.id,sub.id),'group into subcategory leaves store unchanged');
+reject(()=>C.merge('missing',income.id),'missing merge source leaves store unchanged');
+const created=C.create('New','expense'); const renamed=C.rename(created.id,'Renamed');
+check(renamed.name==='Renamed','valid create and rename remain supported');
+const target=C.create('Kept','expense'); C.merge(sub.id,target.id);
+check(store.get('transactions',tx.id).category_id===target.id&&store.get('merchant_rules',rule.id).category_id===target.id&&store.get('categories',sub.id).merged_into_id===target.id,'valid merge preserves transaction, merchant-rule and source updates');
+assert.deepEqual(fails,[],fails.join('\n')); console.log('PASS categories validation');

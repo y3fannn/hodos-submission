@@ -1,0 +1,45 @@
+www.hodos.consulting {
+	redir https://hodos.consulting{uri} 308
+}
+
+hodos.consulting {
+	root * /var/www/hodos/current
+	header {
+		Content-Security-Policy "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Cache-Control no-cache
+	}
+	@direct404 path /404.html
+	handle @direct404 {
+		header X-Robots-Tag "noindex, nofollow"
+		header Cache-Control no-store
+		file_server {
+			status 404
+		}
+	}
+	@direct503 path /503.html
+	handle @direct503 {
+		header X-Robots-Tag "noindex, nofollow"
+		header Cache-Control no-store
+		file_server {
+			status 503
+		}
+	}
+	handle_errors 404 {
+		header X-Robots-Tag "noindex, nofollow"
+		header Cache-Control no-store
+		rewrite * /404.html
+		file_server
+	}
+	handle_errors 5xx {
+		header X-Robots-Tag "noindex, nofollow"
+		header Cache-Control no-store
+		rewrite * /503.html
+		file_server
+	}
+	handle {
+		file_server
+	}
+}

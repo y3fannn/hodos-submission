@@ -1,0 +1,20 @@
+// Net worth extra validation on disposable in-memory data; no browser or providers.
+import assert from 'node:assert/strict';
+Object.defineProperty(globalThis, 'navigator', { value: { storage: null }, configurable: true });
+let requests = 0; globalThis.fetch = async () => { requests++; throw new Error('No network in net worth validation'); };
+const P = new URL('../public/js/', import.meta.url).href, M = p => import(P + p);
+const {store} = await M('lib/store.js'), {money} = await M('lib/money.js');
+const NW = await M('features/networth.js'), PFL = await M('features/profile.js'), {ValidationError} = await M('lib/ui.js');
+store.open(null); PFL.createProfile({base_currency:'SGD',timezone:'UTC',self_description:'working',ai_provider:false});
+const failures=[]; const check=(ok,label)=>{console.log(`${ok?'PASS':'FAIL'} ${label}`);if(!ok)failures.push(label);};
+const reject=(fn,label)=>{const before=JSON.stringify(store.snapshot());let error;try{fn();}catch(e){error=e;}check(error instanceof ValidationError && (Object.keys(error.fields||{}).length||error.form) && JSON.stringify(store.snapshot())===before,`${label}: named validation and unchanged store`);};
+const valid={name:'Car',type:'vehicle',value:money(0,'SGD'),as_of:'2025-02-28'};
+for(const patch of [{name:' '},{type:'unknown'},{value:money(Number.MAX_SAFE_INTEGER+1,'SGD')},{value:money(1,'XXX')},{as_of:'2025-02-30'}]) reject(()=>NW.createExtra(patch.name??valid.name,patch.type??valid.type,patch.value??valid.value,patch.as_of??valid.as_of),'invalid create');
+const zero=NW.createExtra(valid.name,valid.type,valid.value,valid.as_of), signed=NW.createExtra('Loan','other_liability',money(-1250,'USD'),'2001-01-01');
+check(zero.value.amount===0&&signed.value.amount===-1250,'valid zero and signed Money with historical dates remain accepted');
+const before=JSON.stringify(store.snapshot());reject(()=>NW.updateExtra(zero.id,{name:'',value:money(Number.MAX_SAFE_INTEGER+1,'SGD')}),'compound invalid update');
+check(JSON.stringify(store.snapshot())===before,'compound invalid update leaves existing value untouched');
+reject(()=>NW.updateExtra('missing',{name:'Changed'}),'invalid update id');
+check(NW.createExtra('Foreign','property',money(123,'JPY'),'2035-12-31').value.currency==='JPY','missing manual rate and future as-of date do not block extra creation');
+check(requests===0,'net worth validation never calls providers');
+assert.deepEqual(failures,[],failures.join('\n')); console.log('PASS Net worth extra validation');

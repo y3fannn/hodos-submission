@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import {startServer,startChrome} from './browser-kit.mjs';
+const server=await startServer({AUTH:'off'});let browser;
+try {
+ browser=await startChrome({width:360,height:900});const {cmd,js,waitFor}=browser;
+ await cmd('Page.navigate',{url:server.url+'?demo=1#/transactions'});
+ await waitFor(`!!document.querySelector('[data-form=search]')&&!!localStorage.getItem('pfa.demo')`);
+ await js(`(async()=>{const {store}=await import('./js/lib/store.js');const snapshot=store.snapshot();for(const tx of snapshot.tables.transactions)tx.deleted_at=new Date().toISOString();store.importJson(snapshot);const a=store.all('accounts')[0];for(let i=0;i<25;i++)store.insert('transactions',{id:'records-check-'+i,kind:'expense',account_id:a.id,money:{amount:100,currency:a.currency},base_money:{amount:100,currency:a.currency},date:'2026-09-01',created_at:new Date(Date.UTC(2026,8,1,0,0,i)).toISOString(),merchant:'Needle '+i,note:'',source:'form',voided_at:null,deleted_at:null});})()`);
+ await js(`location.hash='#/transactions'`);await waitFor(`document.querySelector('[data-record-count]')?.textContent.includes('Records')`);
+ assert.equal(await js(`document.querySelectorAll('[data-tx]').length`),20,'Records page renders at most 20 rows');
+ assert.equal(await js(`document.querySelectorAll('.record-day').length`),1,'day group renders once on first page');
+ assert.equal(await js(`document.querySelector('.day-totals')?.textContent.includes('25.00')`),true,'page day heading totals all 25 records');
+ await js(`location.hash='#/transactions?page=2'`);await waitFor(`document.querySelector('[data-record-count]')?.textContent.includes('21–25')`);
+ assert.equal(await js(`location.hash==='#/transactions?page=2'`),true,'actual URL page=2 is parsed and retained');
+ assert.equal(await js(`document.querySelectorAll('[data-tx]').length`),5,'second page contains remaining five');
+ assert.equal(await js(`document.querySelector('.day-totals')?.textContent.includes('25.00')`),true,'continued day heading repeats complete total');
+ assert.equal(await js(`document.querySelector('[data-tx]') instanceof HTMLAnchorElement`),true,'record rows are native anchors');
+ await js(`location.hash='#/transactions?page=nope'`);await waitFor(`location.hash==='#/transactions'`);
+ await js(`location.hash='#/transactions?q=Needle%2024&page=8'`);await waitFor(`document.querySelector('[data-tx]')?.textContent.includes('Needle 24')`);
+ assert.equal(await js(`document.querySelectorAll('[data-tx]').length`),1,'search reaches exact match despite page parameter');
+ await js(`document.querySelector('[data-remove="q"]').click()`);await waitFor(`location.hash==='#/transactions'`);
+ await js(`location.hash='#/transactions?page=99'`);await waitFor(`location.hash==='#/transactions?page=2'`);
+ await js(`location.hash='#/transactions?kind=expense&page=2'`);await waitFor(`!!document.querySelector('[data-remove="kind"]')`);
+ assert.equal(await js(`document.querySelector('[data-remove="kind"]')!==null&&!document.querySelector('[data-filters]').open`),true,'active conditions remain visible with advanced filters collapsed');
+ await js(`location.hash='#/transactions/records-check-0'`);await waitFor(`!!document.querySelector('[data-action=cancel]')`);
+ assert.equal(await js(`document.querySelector('[data-action=cancel]').textContent`),'Cancel charge','expense button names the charge');
+ await js(`document.querySelector('[data-action=cancel]').click()`);await waitFor(`!!document.querySelector('[role=dialog]')`);
+ assert.equal(await js(`document.querySelector('[role=dialog] h2').textContent`),'Cancel this charge?');
+ assert.equal(await js(`document.querySelector('[role=dialog] button[type=submit]').textContent`),'Cancel charge');
+ await js(`document.querySelector('[data-action=modal-cancel]').click()`);
+ assert.equal(await js(`(async()=>{const {store}=await import('./js/lib/store.js');return store.get('transactions','records-check-0').voided_at;})()`),null,'dismissing the dialog changes nothing');
+ await js(`(async()=>{const {store}=await import('./js/lib/store.js');store.update('transactions','records-check-1',{kind:'income',merchant:null});location.hash='#/transactions/records-check-1';})()`);await waitFor(`document.querySelector('[data-action=cancel]')?.textContent==='Cancel transaction'`);
+ await js(`document.querySelector('[data-action=cancel]').click()`);await waitFor(`!!document.querySelector('[role=dialog]')`);
+ assert.equal(await js(`document.querySelector('[role=dialog] h2').textContent`),'Cancel this transaction?','income is not called a charge');
+ assert.equal(await js(`document.querySelector('[role=dialog] button[type=submit]').textContent`),'Cancel transaction');
+ await js(`document.querySelector('[data-action=modal-cancel]').click()`);
+ console.log('PASS Records pagination/search/totals and expense/income cancellation wording with no-write dismissal');
+} finally {await browser?.close();server.stop();}

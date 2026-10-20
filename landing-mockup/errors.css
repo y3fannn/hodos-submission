@@ -1,0 +1,9 @@
+
+.error-page { min-height:100vh; display:grid; place-items:center; padding:32px; }
+.error-card { width:min(100%,760px); padding:clamp(28px,7vw,72px); border:1px solid var(--border); border-radius:20px; background:var(--surface); }
+.error-card .brand { margin-bottom:48px; }
+.error-card h1 { font-size:clamp(42px,8vw,72px); margin-bottom:24px; }
+.error-card p { color:var(--text-2); font-size:20px; margin-bottom:32px; }
+.error-actions { display:flex; flex-wrap:wrap; gap:16px; }
+.error-actions a { min-height:48px; }
+:focus-visible { outline:3px solid var(--gold); outline-offset:4px; }

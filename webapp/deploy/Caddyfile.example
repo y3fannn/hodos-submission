@@ -1,0 +1,6 @@
+# Installed at /etc/caddy/Caddyfile.
+# Caddy gets and renews the HTTPS certificate on its own. Access logs stay off on purpose:
+# they would record every visitor's address. design/2026-09-20-vm.md step 8.
+app.hodos.consulting {
+	reverse_proxy 127.0.0.1:8787
+}

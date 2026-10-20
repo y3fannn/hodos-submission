@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {store} from '../public/js/lib/store.js';
+import {runRead} from '../public/js/features/assistant-reads.js';
+import {buildContext,bindPlanReferences} from '../public/js/features/assistant-data.js';
+import {validateProse} from '../public/js/lib/ai.js';
+const started=new Date().toISOString();
+store.open(null,async()=>{},'accuracy-fixture');
+try {
+ store.insert('profile',{base_currency:'USD',timezone:'UTC'});
+ const account=store.insert('accounts',{name:'Fixture',type:'bank',currency:'USD',opening_balance:{amount:0,currency:'USD'},opened_on:'2020-01-01'});
+ const target=store.insert('transactions',{kind:'expense',account_id:account.id,date:'2026-10-10',money:{amount:10000,currency:'USD'},merchant:'Selected',source:'form'});
+ store.insert('transactions',{kind:'expense',account_id:account.id,date:'2026-10-11',money:{amount:20000,currency:'USD'},merchant:'Unrelated',source:'form'});
+ const foreign=store.insert('accounts',{name:'Foreign fixture',type:'bank',currency:'EUR',opening_balance:{amount:0,currency:'EUR'},opened_on:'2020-01-01'});
+ store.insert('transactions',{kind:'expense',account_id:foreign.id,date:'2026-10-12',money:{amount:5000,currency:'EUR'},merchant:'No conversion',source:'form'});
+ const context=buildContext({results:[runRead({kind:'search_transactions',params:{q:'Selected'}})]});
+ const alias=[...context.aliases.values()].find(v=>v.table==='transactions'&&v.id===target.id).alias;
+ const bound=bindPlanReferences({kind:'search_transactions',params:{q:alias,from:'2026-10-01',to:'2026-10-31'}},context);
+ const exact=runRead(bound), selected=exact.data.filter(r=>r.entry_id);
+ assert.equal(selected.length,1);assert.equal(selected[0].entry_id,target.id);assert.equal(exact.data.find(r=>r.summary_type==='expense').total.amount,10000);
+ assert.equal(runRead({...bound,params:{...bound.params,from:'2026-10-11'}}).data.filter(r=>r.entry_id).length,0);
+ assert.match(validateProse('You spent 25 CHF.',{total:{amount:10000,currency:'USD',decimal:'100.00'}}),/numbers not in input/);
+ const staleContext=buildContext({results:[runRead({kind:'search_transactions',params:{q:'Selected'}})]});
+ const staleAlias=[...staleContext.aliases.values()].find(v=>v.table==='transactions'&&v.id===target.id).alias;
+ const stale=bindPlanReferences({kind:'search_transactions',params:{q:staleAlias}},staleContext);store.softDelete('transactions',target.id);
+ assert.throws(()=>runRead(stale),/changed|current/i);
+ assert.match(validateProse('You spent 25.00 USD.',{total:{amount:10000,currency:'USD',decimal:'100.00'}}),/numbers not in input/);
+ assert.equal(validateProse('On 10 October, 2 options included the supplied 100.00 USD.',{total:{amount:10000,currency:'USD',decimal:'100.00'},date:'2026-10-10',count:2}),null);
+ const incomplete=runRead({kind:'search_transactions',params:{from:'2026-10-01',to:'2026-10-31'}});
+ assert.equal(incomplete.availability.state,'incomplete');
+ console.log(JSON.stringify({started,ended:new Date().toISOString(),exactEntryCount:selected.length,total:10000,staleRejected:true,inventedMoneyRejected:true,validProseAccepted:true,missingConversionsRemainIncomplete:true}));
+} finally {store.close();}

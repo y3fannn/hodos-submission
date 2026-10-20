@@ -1,0 +1,49 @@
+/* Shared upright-phone presentation; readable ordinary scenes remain the default. */
+.scroll-story .scene { display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:80px; align-items:center; padding-block:72px; border-top:1px solid var(--border); }
+.scroll-story .scene-copy { max-width:640px; }
+.scroll-story .scene-copy h2 { margin-bottom:30px; }
+.scroll-story .scene-copy h3 { font-size:clamp(34px,4vw,60px); margin-bottom:30px; }
+.scroll-story .scene-copy > p { color:var(--text-2,var(--secondary,#c2cbe0)); font-size:20px; line-height:1.6; }
+.scroll-story .scene-copy > p + p { margin-top:24px; }
+.scroll-story .scene-copy .ownership { font-size:16px; color:var(--text); letter-spacing:.04em; }
+.scroll-story .phone { width:min(100%,420px); aspect-ratio:7/13; border:1px solid #48577e; border-radius:28px; background:var(--surface); overflow:hidden; justify-self:end; margin:0; }
+.scroll-story .phone img { width:100%; height:100%; object-fit:contain; display:block; }
+.scroll-story .shared-phone { display:none; }
+.scroll-story.is-pinned { height:calc(var(--scene-count,4) * 100svh + 40svh); }
+.scroll-story.is-pinned .story-stage { position:sticky; top:var(--story-header,76px); height:calc(100svh - var(--story-header,76px)); display:grid; grid-template-columns:minmax(0,1fr) 420px; gap:80px; align-items:center; }
+.scroll-story.is-pinned .scene-list { display:grid; min-width:0; }
+.scroll-story.is-pinned .scene { display:block; grid-area:1/1; padding:0; border:0; pointer-events:none; }
+.scroll-story.is-pinned .scene > figure { display:none; }
+.scroll-story.is-pinned .shared-phone { display:block; position:relative; height:min(780px,calc(100svh - var(--story-header,76px) - 48px)); width:auto; max-width:420px; }
+.scroll-story .shared-phone > img { position:absolute; inset:0; opacity:0; }
+.scroll-story .shared-phone > img:first-child { opacity:1; }
+/* Alternate sections put native charts/phones on the left and words on the right. */
+.scroll-story[data-media-layout='left'] .scene,
+.scroll-story[data-media-layout='left'].is-pinned .story-stage { grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:64px; }
+.scroll-story[data-media-layout='left'] .scene-copy { grid-column:2; grid-row:1; }
+.scroll-story[data-media-layout='left'] .scene > figure { grid-column:1; grid-row:1; justify-self:center; }
+.scroll-story[data-media-layout='left'].is-pinned .scene-list { grid-column:2; grid-row:1; }
+.scroll-story.is-pinned .shared-media { grid-column:1; grid-row:1; width:100%; max-width:none; border:0; border-radius:0; background:var(--bg); }
+.scroll-story .media-layer { position:absolute; inset:0; display:grid; place-items:center; opacity:0; background:var(--bg); }
+.scroll-story .media-layer > .phone { height:100%; width:auto; max-width:420px; justify-self:center; }
+.scroll-story .native-visual { width:100%; }
+.scroll-story .media-layer > .native-visual { width:100%; max-width:700px; }
+.scroll-story .sharing-mark { width:min(100%,432px); padding:24px 16px; }
+.scroll-story .media-layer > .sharing-mark { width:min(100%,432px); }
+.scroll-story > .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+@media(max-width:899px) {
+  .scroll-story .scene { grid-template-columns:1fr; gap:36px; padding-block:52px; }
+  .scroll-story .phone { justify-self:center; }
+  .scroll-story[data-media-layout='left'] .scene { grid-template-columns:1fr; gap:36px; }
+  .scroll-story[data-media-layout='left'] .scene-copy,
+  .scroll-story[data-media-layout='left'] .scene > figure { grid-column:auto; grid-row:auto; }
+}
+@media(max-width:899px) and (prefers-reduced-motion:no-preference) {
+  .scroll-story .scene-copy.motion-entered,
+  .scroll-story .scene > figure.motion-entered,
+  .feature-gallery > figure.motion-entered { animation: landing-rise-in 520ms ease-out both; }
+  @keyframes landing-rise-in { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+}
+@media(prefers-reduced-motion:reduce) {
+  .scroll-story * { scroll-behavior:auto; }
+}
