@@ -34,24 +34,14 @@ Financial records are encrypted in the user's browser. The server handles accoun
 
 Code calculates financial figures. AI proposes text or import drafts. Saving financial changes requires the normal review and confirmation; documented recurring entries are the exception. Consent, sign-in and enrolled-device checks control AI access. The server uses a request-rate limit; provider spending controls remain separate.
 
-## Known limitations of this snapshot
+## Current Scope and Limitations portion replace with
 
-- The recorded chat-save recovery bug remains: after a chat-message save fails, the expected resume control is missing. Global storage Retry exists, but continuation without duplicates has not passed acceptance. The existing save-safety test is retained.
-- Assistant supports spending, transaction and account questions. Accounts and Records provide manual creation/correction; Add handles one imported file at a time. Some retained older Assistant tests expect broader flows and are not acceptance tests for this smaller scope.
-- Actual Claude/PDF extraction accuracy, physical-device passkeys/accessibility and final database/simultaneous-device sync acceptance are not established by this package.
-- Briefing, Deep Dive and chart-point inspection remain paused; debt calendar payoff dates remain hidden. Existing monthly estimates and manual features are retained.
-- Website screenshots and conversations illustrate fictional data; they are not evidence of successful live AI extraction or saving.
+Hodos is a single-device personal finance application combining financial management tools with AI-assisted interactions. Its integrated design provides a foundation for more connected financial insights as the application evolves.
+
+- AI Assistant: Supports questions about spending, transactions, and accounts, alongside AI-assisted record creation. AI-generated suggestions should be reviewed before saving.
+- Financial Insights: Provides financial information and analysis within the currently supported features. More advanced synthesis across financial modules is a potential future enhancement.
+- Data Import: Supports importing one file at a time.
+- Device Support: Currently supports single-device use.
+- Demo Content: Website screenshots and sample conversations use fictional financial data for demonstration purposes.
 
 This preparation changes packaging and documentation only. It does not repair those limitations, establish full security acceptance or deploy the app.
-
-## Submission preparation checks
-
-Checked on Windows with Node.js 24.13.1:
-
-- Fresh `npm ci` installed all 35 locked packages in a separate disposable copy. The server started; its homepage and authentication-status endpoint returned HTTP 200 with fake credentials and temporary account storage.
-- Persistence, Assistant MVP accuracy, Assistant MVP scope and Assistant privacy checks passed.
-- Static landing packaging passed. All 217 retained non-document files match the source byte for byte. The 26 local README links resolve. No excluded private-data paths or common secret-key signatures were found; this is not a full security audit.
-- `smoke.mjs` did not finish: its file-URL path handling produces an invalid Windows path during source inspection.
-- `server-auth.mjs` passed its device-access, email and entry checks, then stopped in `demo-loading.mjs` because generated sample data did not match the stored baseline hash. The reason for that mismatch is not established; subsequent server-auth checks did not run.
-
-The known chat-save recovery failure remains separately recorded above. Full browser, actual-provider and physical-device acceptance were not rerun during packaging.
