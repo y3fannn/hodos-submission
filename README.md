@@ -3,7 +3,7 @@
 Hodos is a personal-finance prototype for recording money, reviewing spending and asking questions about saved records.
 
 This is a clean snapshot of source commit `226df907c8619ee81a12f864fa4d4406b095e257`.
-The [submission repository](https://github.com/y3fannn/hodos-submission) is private; judges need access to that repository. The [original repository](https://github.com/lyd-sg/personal-finance-ai-agent) remains separate. This folder and its ZIP contain the source directly, without the original Git history.
+The [submission repository](https://github.com/y3fannn/hodos-submission) is public; judges can view and download it without an invitation. The [original repository](https://github.com/lyd-sg/personal-finance-ai-agent) remains separate and private. This folder and its ZIP contain the source directly, without the original Git history.
 
 ## Run locally
 
